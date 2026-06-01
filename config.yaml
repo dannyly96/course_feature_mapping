@@ -1,0 +1,153 @@
+# Golf Course Feature Mapper — main configuration
+# Target AOI : Georgia / South Carolina tighter box (~400 km, first run)
+# Storage    : /content/golf_mapper  (ephemeral Colab disk — adjust for Drive)
+# Defaults   : MIN_FEATURES=50, ZOOM=19, TILE=1024
+
+aoi:
+  # type: osm_id | bbox | admin_name
+  type: bbox
+  # [min_lon, min_lat, max_lon, max_lat] — ~400 km box centred on Augusta
+  # Covers Georgia + most of South Carolina; expect 50-150 training courses.
+  # Widen to [-85.0, 30.0, -78.0, 37.0] for the full southeastern USA run.
+  bbox: [-84.0, 32.0, -80.0, 35.0]
+  name: "Georgia / South Carolina"
+  # osm_id is used by imagery.py to download the specific target course.
+  # Keep this pointing at Augusta even when discovery uses bbox mode.
+  osm_id: "relation/5179090"
+  buffer_m: 50.0  # metres of padding around boundary for imagery fetch
+
+data:
+  cache_dir:       "/content/golf_mapper/cache"
+  imagery_cache:   "/content/golf_mapper/cache/imagery"
+  overpass_cache:  "/content/golf_mapper/cache/overpass"
+  dataset_dir:     "/content/golf_mapper/dataset"
+  checkpoints_dir: "/content/golf_mapper/checkpoints"
+  output_dir:      "/content/golf_mapper/output"
+
+imagery:
+  zoom: 19  # 18-20; zoom 19 ≈ 30 cm/px at mid-latitudes
+  # samgeo/leafmap xyzservices source string for Esri World Imagery.
+  # Verify the exact string in samgeo docs; fallback XYZ URL is provided below.
+  source: "Esri.WorldImagery"
+  esri_xyz_url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+
+labels:
+  tile_size:            1024  # pixels per tile side (square)
+  overlap:              128   # pixel overlap between adjacent tiles
+  min_features:         50    # course must have >= this many OSM features to be a training course
+  empty_tile_max_ratio: 0.10  # max fraction of all-background tiles to keep for class balance
+
+model:
+  # Instance segmentation variant.
+  # yolo26-seg: released Jan 2026, NMS-free — verify exact weight identifier in ultralytics docs
+  # yolo11-seg: stable fallback if yolo26 weights are unavailable in the current environment
+  variant: "yolo26-seg"
+  # SAM 2.1 boundary refinement (always active unless use_sam3=true + HF access confirmed)
+  sam_model_version: "sam2"        # passed as model_version= to samgeo.SamGeo — verify in docs
+  sam_model_type:    "hiera_large" # verify exact type string in samgeo release notes
+  # SAM 3 text-prompted upgrade (off by default; requires HF gated-model access)
+  # Accept license at: https://huggingface.co/facebook/sam3 before enabling
+  use_sam3: false
+
+training:
+  weighting_mode: "regional"  # global | regional
+  sigma_km:       150.0       # Gaussian decay σ for proximity weighting (km)
+  max_radius_km:  500.0       # exclude training courses beyond this radius
+  epochs:         100
+  batch_size:     16
+  img_size:       1024
+  seed:           42
+  resume:         false
+  val_split:      0.15
+  test_split:     0.10
+
+inference:
+  conf_threshold: 0.25
+  iou_threshold:  0.45  # used for cross-tile stitch (YOLO26 is NMS-free internally)
+  min_area_m2:    10.0  # drop detections smaller than this (sq metres, ground units)
+  tile_overlap:   128   # pixel overlap for tiled inference (should match labels.overlap)
+
+export:
+  simplify_tolerance_m: 0.5     # Douglas-Peucker tolerance (metres)
+  output_crs: "EPSG:4326"
+  attribution: >
+    Imagery source: Esri World Imagery (Esri, Maxar, GeoEye, Earthstar Geographics,
+    CNES/Airbus DS, USDA, USGS, AeroGRID, IGN, and the GIS User Community).
+    Derived vector data licensed under ODbL (OpenStreetMap contributors).
+    DO NOT redistribute raw imagery tiles.
+
+overpass:
+  endpoints:
+    - "https://overpass-api.de/api/interpreter"
+    - "https://overpass.kumi.systems/api/interpreter"
+    - "https://maps.mail.ru/osm/tools/overpass/api/interpreter"
+  timeout:      120   # seconds per HTTP request
+  max_retries:  5
+  backoff_base: 2.0   # exponential backoff base (seconds)
+
+# OSM class definitions.
+# Golf tagging verified against OSM wiki: https://wiki.openstreetmap.org/wiki/Tag:leisure%3Dgolf_course
+# golf=water_hazard / golf=lateral_water_hazard still exist in OSM data but natural=water
+# is the current recommended write tag for water bodies on golf courses.
+# Tree/canopy is emitted as natural=wood (area polygon) not natural=tree (point).
+classes:
+  - id: 0
+    name: rough
+    color: "#8BC34A"
+    osm_read_tags:
+      - {golf: rough}
+    osm_write_tags:
+      golf: rough
+    is_background: true   # background / filler class — lower sampling weight
+
+  - id: 1
+    name: fairway
+    color: "#4CAF50"
+    osm_read_tags:
+      - {golf: fairway}
+    osm_write_tags:
+      golf: fairway
+
+  - id: 2
+    name: green
+    color: "#1B5E20"
+    osm_read_tags:
+      - {golf: green}
+    osm_write_tags:
+      golf: green
+
+  - id: 3
+    name: tee
+    color: "#FFF9C4"
+    osm_read_tags:
+      - {golf: tee}
+    osm_write_tags:
+      golf: tee
+
+  - id: 4
+    name: bunker
+    color: "#FFF176"
+    osm_read_tags:
+      - {golf: bunker}
+    osm_write_tags:
+      golf: bunker
+
+  - id: 5
+    name: water_hazard
+    color: "#2196F3"
+    osm_read_tags:
+      - {natural: water}
+      - {golf: water_hazard}
+      - {golf: lateral_water_hazard}
+    osm_write_tags:
+      natural: water
+
+  - id: 6
+    name: woods
+    color: "#33691E"
+    osm_read_tags:
+      - {natural: wood}
+      - {landuse: forest}
+      - {natural: tree_row}
+    osm_write_tags:
+      natural: wood

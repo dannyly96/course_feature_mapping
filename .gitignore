@@ -216,3 +216,21 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Golf Mapper — imagery cache (MUST NOT redistribute Esri tiles per licensing)
+cache/
+*.tif
+*.tiff
+*.geotiff
+*.img
+
+# Model checkpoints and training runs
+checkpoints/
+runs/
+weights/
+
+# Dataset tiles (derived from OSM labels + Esri imagery; regenerate from source)
+dataset/
+
+# Overpass response cache (regenerate on demand)
+overpass_cache/
