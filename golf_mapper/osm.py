@@ -121,6 +121,34 @@ def build_discovery_query(
     )
 
 
+def build_single_bbox_query(bbox: list[float]) -> str:
+    """Return QL that fetches ALL course boundaries AND ALL golf features in one request.
+
+    Replaces the previous N+1 pattern (one boundary query + one feature-count query
+    per course) with a single round-trip. Feature counts are then computed in Python
+    via a geopandas spatial join rather than per-course Overpass area filters.
+
+    bbox must be [min_lon, min_lat, max_lon, max_lat] (EPSG:4326).
+    """
+    west, south, east, north = bbox
+    return (
+        f"[out:json][timeout:180];\n"
+        f"(\n"
+        # Course boundaries
+        f'  way["leisure"="golf_course"]({south},{west},{north},{east});\n'
+        f'  relation["leisure"="golf_course"]({south},{west},{north},{east});\n'
+        # Golf features — all golf=* tags, water, woodland
+        f'  way["golf"~"."]({south},{west},{north},{east});\n'
+        f'  way["natural"~"water|wood|tree_row"]({south},{west},{north},{east});\n'
+        f'  way["landuse"="forest"]({south},{west},{north},{east});\n'
+        f'  relation["golf"~"."]({south},{west},{north},{east});\n'
+        f");\n"
+        f"out body;\n"
+        f">;\n"
+        f"out skel qt;"
+    )
+
+
 def build_feature_count_query(area_id: int) -> str:
     """Return QL that fetches *tags only* of qualifying features in a course area.
 

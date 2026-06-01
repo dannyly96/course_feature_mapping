@@ -1,24 +1,22 @@
 # Golf Course Feature Mapper — main configuration
-# Target AOI : Augusta metro test box (~110 × 100 km, ~10 training courses)
+# Target AOI : Augusta tight test box (~55 × 55 km, expect 10-20 total courses)
 # Storage    : /content/golf_mapper  (ephemeral Colab disk — adjust for Drive)
-# Defaults   : MIN_FEATURES=50, ZOOM=19, TILE=1024
 
 aoi:
   # type: osm_id | bbox | admin_name
   type: bbox
   # [min_lon, min_lat, max_lon, max_lat]
-  # ~110 km wide × ~100 km tall box centred on Augusta, GA.
-  # Covers Augusta + Aiken SC + North Augusta SC; expect ~10 qualifying courses.
-  # If fewer than 5 qualify at min_features=50, lower min_features to 10 below.
-  # Scale up:
-  #   Medium  (~50 courses): [-84.0, 32.0, -80.0, 35.0]
-  #   Full SE USA (~150 courses): [-85.0, 30.0, -78.0, 37.0]
-  bbox: [-82.8, 33.2, -81.5, 34.1]
-  name: "Augusta metro area"
-  # osm_id is used by imagery.py to download the specific target course.
-  # Keep this pointing at Augusta even when discovery uses bbox mode.
+  # ~55 km wide × ~55 km tall box centred on Augusta, GA.
+  # Covers Augusta city + immediate surroundings; expect 10-20 total courses.
+  # Scale up when ready:
+  #   Augusta metro  (~20-50  courses): [-82.8, 33.2, -81.5, 34.1]
+  #   GA + SC medium (~50-150 courses): [-84.0, 32.0, -80.0, 35.0]
+  #   Full SE USA    (~300+   courses): [-85.0, 30.0, -78.0, 37.0]
+  bbox: [-82.3, 33.3, -81.8, 33.8]
+  name: "Augusta tight test box"
+  # osm_id tells imagery.py which course to download for inference.
   osm_id: "relation/5179090"
-  buffer_m: 50.0  # metres of padding around boundary for imagery fetch
+  buffer_m: 50.0
 
 data:
   cache_dir:       "/content/golf_mapper/cache"
@@ -38,7 +36,9 @@ imagery:
 labels:
   tile_size:            1024  # pixels per tile side (square)
   overlap:              128   # pixel overlap between adjacent tiles
-  min_features:         50    # course must have >= this many OSM features to be a training course
+  # Lowered from 50 → 5 for the test run so that lightly-mapped local courses
+  # still qualify. Raise back to 50 for a production run.
+  min_features:         5
   empty_tile_max_ratio: 0.10  # max fraction of all-background tiles to keep for class balance
 
 model:
