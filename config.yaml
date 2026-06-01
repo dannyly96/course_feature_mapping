@@ -1,16 +1,20 @@
 # Golf Course Feature Mapper — main configuration
-# Target AOI : Georgia / South Carolina tighter box (~400 km, first run)
+# Target AOI : Augusta metro test box (~110 × 100 km, ~10 training courses)
 # Storage    : /content/golf_mapper  (ephemeral Colab disk — adjust for Drive)
 # Defaults   : MIN_FEATURES=50, ZOOM=19, TILE=1024
 
 aoi:
   # type: osm_id | bbox | admin_name
   type: bbox
-  # [min_lon, min_lat, max_lon, max_lat] — ~400 km box centred on Augusta
-  # Covers Georgia + most of South Carolina; expect 50-150 training courses.
-  # Widen to [-85.0, 30.0, -78.0, 37.0] for the full southeastern USA run.
-  bbox: [-84.0, 32.0, -80.0, 35.0]
-  name: "Georgia / South Carolina"
+  # [min_lon, min_lat, max_lon, max_lat]
+  # ~110 km wide × ~100 km tall box centred on Augusta, GA.
+  # Covers Augusta + Aiken SC + North Augusta SC; expect ~10 qualifying courses.
+  # If fewer than 5 qualify at min_features=50, lower min_features to 10 below.
+  # Scale up:
+  #   Medium  (~50 courses): [-84.0, 32.0, -80.0, 35.0]
+  #   Full SE USA (~150 courses): [-85.0, 30.0, -78.0, 37.0]
+  bbox: [-82.8, 33.2, -81.5, 34.1]
+  name: "Augusta metro area"
   # osm_id is used by imagery.py to download the specific target course.
   # Keep this pointing at Augusta even when discovery uses bbox mode.
   osm_id: "relation/5179090"
